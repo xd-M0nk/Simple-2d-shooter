@@ -1,59 +1,68 @@
+﻿using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
-{
+public class PlayerMovement : MonoBehaviour {
 
-    public float moveSpeed = 5f;
-    public float jumpForce = 10f;
-    private float moveInput;
+	public float maxSpeed = 5f;
+	public float rotSpeed = 180f;
 
-    private Rigidbody2D rb;
+	float shipBoundaryRadius = 0.5f;
 
-    public Transform groundCheck;
-    public float checkRadius = 0.2f;
-    public LayerMask groundLayer;
-    private bool isGrounded;
+	void Start () {
+	
+	}
+	
+	void Update () {
 
-    private void Start()
-    {
-        rb = GetComponent<Rigidbody2D>();
-    }
+		// ROTATE the ship.
 
-    private void Update()
-    {
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
+		// Grab our rotation quaternion
+		Quaternion rot = transform.rotation;
 
-        
-        moveInput = Input.GetAxisRaw("Horizontal");  
+		// Grab the Z euler angle
+		float z = rot.eulerAngles.z;
 
-        
-        MovePlayer();
+		// Change the Z angle based on input
+		z -= Input.GetAxis("Horizontal") * rotSpeed * Time.deltaTime;
 
-        
-        if (isGrounded && Input.GetKeyDown(KeyCode.Space))  
-        {
-            Jump();
-        }
-    }
+		// Recreate the quaternion
+		rot = Quaternion.Euler( 0, 0, z );
 
-    private void MovePlayer()
-    {
-        
-        rb.velocity = new Vector2(moveInput * moveSpeed, rb.velocity.y);
-    }
+		// Feed the quaternion into our rotation
+		transform.rotation = rot;
 
-    private void Jump()
-    {
-        
-        rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-    }
+		// MOVE the ship.
+		Vector3 pos = transform.position;
+		 
+		Vector3 velocity = new Vector3(0, Input.GetAxis("Vertical") * maxSpeed * Time.deltaTime, 0);
 
-    
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(groundCheck.position, checkRadius);
-    }
+		pos += rot * velocity;
+
+		// RESTRICT the player to the camera's boundaries!
+
+		// First to vertical, because it's simpler
+		if(pos.y+shipBoundaryRadius > Camera.main.orthographicSize) {
+			pos.y = Camera.main.orthographicSize - shipBoundaryRadius;
+		}
+		if(pos.y-shipBoundaryRadius < -Camera.main.orthographicSize) {
+			pos.y = -Camera.main.orthographicSize + shipBoundaryRadius;
+		}
+
+		// Now calculate the orthographic width based on the screen ratio
+		float screenRatio = (float)Screen.width / (float)Screen.height;
+		float widthOrtho = Camera.main.orthographicSize * screenRatio;
+
+		// Now do horizontal bounds
+		if(pos.x+shipBoundaryRadius > widthOrtho) {
+			pos.x = widthOrtho - shipBoundaryRadius;
+		}
+		if(pos.x-shipBoundaryRadius < -widthOrtho) {
+			pos.x = -widthOrtho + shipBoundaryRadius;
+		}
+
+		// Finally, update our position!!
+		transform.position = pos;
+
+
+	}
 }
